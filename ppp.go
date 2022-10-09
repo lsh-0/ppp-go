@@ -14,7 +14,7 @@ func main() {
 	output_fname := http.URLFilename(url)
 
 	if !utils.FileExists(output_fname) {
-		output_fname = http.Download(url)
+		output_fname = http.DownloadToFile(url)
 	}
 
 	article_list := utils.ReadJSON[types.ArticleList](output_fname)

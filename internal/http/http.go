@@ -1,5 +1,8 @@
 package http
 
+// HTTP utils.
+// nothing to do with APIs, types, components, projects etc.
+
 import (
 	"encoding/base32"
 	"io"
@@ -13,8 +16,9 @@ func URLFilename(url string) string {
 	return base32.StdEncoding.EncodeToString([]byte(url))
 }
 
-// downloads `url` to a base32 (fs safe) filename
-func Download(url string) string {
+// downloads `url` to a byte array
+// why would anyone want status or headers or such? pft
+func Download(url string) []byte {
 	resp, err := http.Get(url)
 	utils.Check(err)
 	defer resp.Body.Close()
@@ -22,9 +26,19 @@ func Download(url string) string {
 	bytes, err := io.ReadAll(resp.Body)
 	utils.Check(err)
 
-	output_fname := URLFilename(url)
-	err = os.WriteFile(output_fname, bytes, 0644)
-	utils.Check(err)
+	return bytes
+}
 
+// downloads `url` to a base32 (fs safe) filename
+func DownloadToFile(url string) string {
+	output_fname := URLFilename(url)
+	err := os.WriteFile(output_fname, Download(url), 0644)
+	utils.Check(err)
 	return output_fname
+}
+
+// downloads `url` returning an instance of the given type `T`
+// for example: DownloadJSON[ArticleList]("https://api.elifesciences.org/articles")
+func DownloadJSON[T any](url string) T {
+	return utils.FromJSON[T](Download(url))
 }
