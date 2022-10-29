@@ -12,6 +12,17 @@ import (
 	"github.com/lsh-0/ppp-go/internal/utils"
 )
 
+// copies one set of headers into another.
+// todo: if not re-usable, move back into api.go
+// todo: opportunity here to add/remove headers
+func CopyHeader(src, dest http.Header) {
+	for header, value_list := range src {
+		for _, value := range value_list {
+			dest.Add(header, value)
+		}
+	}
+}
+
 func URLFilename(url string) string {
 	return base32.StdEncoding.EncodeToString([]byte(url))
 }

@@ -7,8 +7,11 @@ package api
 // content type was successfully negotiated, etc.
 
 import (
+	"io"
 	"net/http"
 	"net/url"
+
+	foo "github.com/lsh-0/ppp-go/internal/http"
 )
 
 type ContentType struct {
@@ -25,7 +28,11 @@ type KeyVal struct {
 	Val any
 }
 
-type Request struct {
+type RequestConfig struct {
+	// when true, response is not decompressed nor is the json marshalled.
+	// you can serve the bytes up directly to the response writer.
+	Proxy bool
+
 	// acceptable content types.
 	ContentTypeList []ContentType
 	// api key, if any, for making authenticated requests.
@@ -60,7 +67,34 @@ type Response[T any] struct {
 	Authenticated bool
 }
 
-func request[T any](endpoint string, opts Request) Response[T] {
+func ProxyRequest(respWriter http.ResponseWriter, extReq *http.Request) {
+
+	extReq.URL.Scheme = "https"
+	extReq.URL.Host = "api.elifesciences.org"
+
+	intReq := http.Request{
+		Method: extReq.Method,
+		URL:    extReq.URL,
+		Header: http.Header{},
+		// POST+PUT
+		// Body: req.Body,
+		// ContentLength: req.ContentLength,
+		Close: extReq.Close,
+	}
+	foo.CopyHeader(extReq.Header, intReq.Header)
+
+	resp, err := http.DefaultTransport.RoundTrip(&intReq)
+	if err != nil {
+		http.Error(respWriter, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	defer resp.Body.Close()
+	foo.CopyHeader(resp.Header, respWriter.Header())
+	respWriter.WriteHeader(resp.StatusCode)
+	io.Copy(respWriter, resp.Body)
+}
+
+func request[T any](endpoint string, opts RequestConfig) Response[T] {
 	u := url.URL{}
 	u.Scheme = "https"
 	u.Host = "api.elifesciences.org"
