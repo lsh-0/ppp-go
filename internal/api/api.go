@@ -9,9 +9,9 @@ package api
 import (
 	"io"
 	"net/http"
-	"net/url"
 
 	foo "github.com/lsh-0/ppp-go/internal/http"
+	"github.com/lsh-0/ppp-go/internal/utils"
 )
 
 type ContentType struct {
@@ -54,7 +54,7 @@ type RequestConfig struct {
 
 type Response[T any] struct {
 	// https://pkg.go.dev/net/http#Response
-	http.Response
+	HttpResponse http.Response
 
 	// instantiated type.
 	// todo: how to make this generic?
@@ -65,9 +65,13 @@ type Response[T any] struct {
 
 	// the request was successfully authenticated
 	Authenticated bool
+
+	Deprecated bool
 }
 
-func ProxyRequest(respWriter http.ResponseWriter, extReq *http.Request) {
+// proxies a request from a http server to https://api.elifesciences.org
+// writing the response directly to the given `respWriter`
+func ProxyHttpRequest(respWriter http.ResponseWriter, extReq *http.Request) {
 
 	extReq.URL.Scheme = "https"
 	extReq.URL.Host = "api.elifesciences.org"
@@ -77,9 +81,9 @@ func ProxyRequest(respWriter http.ResponseWriter, extReq *http.Request) {
 		URL:    extReq.URL,
 		Header: http.Header{},
 		// POST+PUT
-		// Body: req.Body,
-		// ContentLength: req.ContentLength,
-		Close: extReq.Close,
+		// Body: extReq.Body,
+		ContentLength: extReq.ContentLength,
+		Close:         extReq.Close,
 	}
 	foo.CopyHeader(extReq.Header, intReq.Header)
 
@@ -94,14 +98,26 @@ func ProxyRequest(respWriter http.ResponseWriter, extReq *http.Request) {
 	io.Copy(respWriter, resp.Body)
 }
 
-func request[T any](endpoint string, opts RequestConfig) Response[T] {
-	u := url.URL{}
-	u.Scheme = "https"
-	u.Host = "api.elifesciences.org"
-	// q := u.Query()
-	// for keyval in opts.KeywordArgs {
-	// 	q.set(keyval.Key, keyval.Val)
-	// }
+// makes a request to the api gateway for the given `endpoint` path,
+// returning an api.Response containing an instance of the given type `T`.
+func Request[T any](endpoint string, opts RequestConfig) Response[T] {
+	url := "https://api.elifesciences.org" + endpoint
 
-	return Response[T]{}
+	resp, _ := http.Get(url)
+	defer resp.Body.Close()
+
+	bytes, _ := io.ReadAll(resp.Body)
+
+	t_inst := utils.FromJSON[T](bytes)
+
+	return Response[T]{
+		HttpResponse: *resp,
+		Content:      t_inst,
+		ContentType: ContentType{
+			ContentType: "foo",
+			Version:     1,
+			Deprecated:  false,
+		},
+		Authenticated: false,
+	}
 }

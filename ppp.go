@@ -17,6 +17,6 @@ func main() {
 		output_fname = http.DownloadToFile(url)
 	}
 
-	article_list := utils.ReadJSON[types.ArticleList](output_fname)
+	article_list := utils.ReadJSON[types.ArticleSnippetList](output_fname)
 	utils.Pprint(utils.ToJSON(article_list))
 }

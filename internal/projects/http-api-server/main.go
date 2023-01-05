@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/", api.ProxyRequest)
+	http.HandleFunc("/", api.ProxyHttpRequest)
 	http.ListenAndServe(":8090", nil)
 }

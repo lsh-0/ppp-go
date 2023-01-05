@@ -1,6 +1,13 @@
 // types.go
 package types
 
+type Meta struct {
+	Source      string
+	SourceID    string
+	Type        string
+	TypeVersion int
+}
+
 // mapping jsonschema to go structs:
 // 'allOf' == condense sets of properties, for example, 'Article'
 // 'oneOf' == variable types, when type is array. for example, 'ArticlePoa' or 'ArticleVor'
@@ -34,53 +41,55 @@ type Subject struct {
 	} `json:"image,omitempty"`
 }
 
-type Article struct {
+// article attributes common across *all* article snippets.
+// only add attributes as needed within the code.
+// rendering of common and specialised ArticleSnippet structs will have access to the complete set of data.
+type ArticleSnippet struct {
+	// _Meta Meta
+
 	// https://github.com/elifesciences/api-raml/blob/develop/src/snippets/article.v1.yaml
-	Id                string    `json:"id"`
-	Version           int       `json:"version"`
-	Type              string    `json:"type"`
-	Doi               string    `json:"doi"`
-	AuthorLine        string    `json:"authorLine"`
-	Title             string    `json:"title"`
-	TitlePrefix       string    `json:"titlePrefix,omitempty"`
-	Stage             string    `json:"stage"`       // 'preview' or 'published'
-	Published         string    `json:"published"`   // date-time
-	VersionDate       string    `json:"versionDate"` // date-time
-	StatusDate        string    `json:"statusDate"`  // date-time
-	Volume            int       `json:"volume"`
-	ElocationId       string    `json:"elocationId"`
-	Pdf               string    `json:"pdf"` // url
-	Subjects          []Subject `json:"subjects"`
-	ResearchOrganisms []string  `json:"researchOrganisms,omitempty"` // set
-	Image             *struct {
-		Thumbnail Image `json:"thumbnail,omitempty"`
-		Social    Image `json:"social,omitempty"`
-	} `json:"image,omitempty"`
+	Id      string `json:"id"`
+	Version int    `json:"version"`
+	// Type        string `json:"type"`
+	// Doi         string `json:"doi"`
+	// AuthorLine  string `json:"authorLine"`
+	// Title       string `json:"title"`
+	// TitlePrefix string `json:"titlePrefix,omitempty"`
+	// Stage       string `json:"stage"`       // 'preview' or 'published'
+	// Published   string `json:"published"`   // date-time
+	// VersionDate string `json:"versionDate"` // date-time
+	// StatusDate  string `json:"statusDate"`  // date-time
+	// these work, but in the normal course of things, do we need to carry them around except as a serialised json blob?
+	// Volume            int       `json:"volume"`
+	// ElocationId       string    `json:"elocationId"`
+	// Pdf               string    `json:"pdf"` // url
+	// Subjects          []Subject `json:"subjects"`
+	// ResearchOrganisms []string  `json:"researchOrganisms,omitempty"` // set
+	// Image             *struct {
+	// Thumbnail Image `json:"thumbnail,omitempty"`
+	// Social    Image `json:"social,omitempty"`
+	// } `json:"image,omitempty"`
 
 	// present but shouldn't be?
-	Copyright Copyright `json:"copyright"`
+	// Copyright Copyright `json:"copyright"`
 }
 
-type ArticlePoa struct {
-	Article
-	Status string `json:"status"`
-}
-
-type ArticleVor struct {
-	// https://github.com/elifesciences/api-raml/blob/develop/src/snippets/article.v1.yaml
-	Article
-
-	// https://github.com/elifesciences/api-raml/blob/2.8.0/src/snippets/article-vor.v1.yaml
-	Status          string `json:"status"` // "vor"
-	ImpactStatement string `json:"impactStatement,omitempty"`
-	FiguresPDF      string `json:"figuresPdf,omitempty"` // url
-	// not yet implemented?
-	// ReviewedDate    string `json:"reviewedDate"` // date-time
-	// CurationLabels  []string `json:"curationLabels"` // set actually, min of one
-}
-
-type ArticleList struct {
+type ArticleSnippetList struct {
 	Total int `json:"total"`
 	// https://github.com/elifesciences/api-raml/blob/develop/dist/model/article-list.v1.json#L14
-	Items []ArticleVor `json:"items"`
+	Items []ArticleSnippet `json:"items"`
+}
+
+type Article struct {
+}
+
+type Recommendation struct {
+}
+
+type SearchResult struct {
+	Id int
+}
+
+type SearchResultList struct {
+	Items []SearchResult
 }

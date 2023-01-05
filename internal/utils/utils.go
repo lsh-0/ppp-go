@@ -9,6 +9,22 @@ import (
 	"os"
 )
 
+/* take some `val` and attempt to coerce it to a `T` */
+func Coerce[T any](val interface{}) (T, error) {
+
+	return *new(T), nil
+}
+
+/*
+Reach into `val` to extract a value of type `T` using a dotted `path`.
+Integer paths are assumed to be array indices.
+For example: Get_in(deeply_nested_struct, "foo_list.0.bar_map.id")
+Returns a pair of (value, successful-extraction?).
+*/
+func GetIn[T any](val interface{}, path string) (interface{}, bool) {
+	return *new(T), false
+}
+
 func Pprint(val interface{}) {
 
 	switch valtype := val.(type) {
