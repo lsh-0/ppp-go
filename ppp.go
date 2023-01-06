@@ -3,20 +3,18 @@ package main
 import (
 
 	// "github.com/lsh-0/ppp-go/internal/components/lax-proxy/interface"
-	"github.com/lsh-0/ppp-go/internal/http"
-	"github.com/lsh-0/ppp-go/internal/types"
-	"github.com/lsh-0/ppp-go/internal/utils"
-	// "github.com/emvi/null"
+	// "github.com/lsh-0/ppp-go/internal/http"
+	"github.com/lsh-0/ppp-go/internal/log"
+	// "github.com/lsh-0/ppp-go/internal/types"
+	// "github.com/lsh-0/ppp-go/internal/utils"
+	"fmt"
 )
 
 func main() {
-	url := "https://api.elifesciences.org/articles"
-	output_fname := http.URLFilename(url)
-
-	if !utils.FileExists(output_fname) {
-		output_fname = http.DownloadToFile(url)
-	}
-
-	article_list := utils.ReadJSON[types.ArticleSnippetList](output_fname)
-	utils.Pprint(utils.ToJSON(article_list))
+	fmt.Println("started...")
+	log.Debug("debug?")
+	log.Info("info.")
+	log.Warn("*warn*")
+	log.Error("error!")
+	fmt.Println("...done.")
 }
