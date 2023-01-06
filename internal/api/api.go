@@ -7,38 +7,28 @@ package api
 // content type was successfully negotiated, etc.
 
 import (
+	"errors"
 	"io"
+	"mime"
 	"net/http"
+	"strconv"
 
 	foo "github.com/lsh-0/ppp-go/internal/http"
-	"github.com/lsh-0/ppp-go/internal/utils"
+
+	"github.com/lsh-0/ppp-go/internal/log"
 )
 
-type ContentType struct {
-	// aka the 'mime' type
-	ContentType string
-	Version     int
-	// a content type is deprecated if it's not using the most recent content type *version*
-	Deprecated bool
-}
-
-// does Go have tuples? do I really need a struct here?
-type KeyVal struct {
-	Key string
-	Val any
-}
-
 type RequestConfig struct {
-	// when true, response is not decompressed nor is the json marshalled.
-	// you can serve the bytes up directly to the response writer.
-	Proxy bool
 
-	// acceptable content types.
-	ContentTypeList []ContentType
+	// acceptable content types
+	// an array of mime:mime-version
+	ContentTypeList []map[string]int
+
 	// api key, if any, for making authenticated requests.
 	ApiKey string
+
 	// a list of key+vals
-	KeywordArgs []KeyVal
+	KeywordArgs map[string]any
 
 	// trait, see 'paged'
 	Page    int
@@ -52,21 +42,25 @@ type RequestConfig struct {
 	ContainingList []string
 }
 
-type Response[T any] struct {
+type Response struct {
 	// https://pkg.go.dev/net/http#Response
 	HttpResponse http.Response
 
-	// instantiated type.
-	// todo: how to make this generic?
-	Content T //interface{}
+	// response body as a string, probably JSON although not guaranteed
+	Content string
 
-	// content type information derived from the response
-	ContentType ContentType
+	// aka the 'mime' type, "application/vnd.elife.article-list+json"
+	ContentType string
 
-	// the request was successfully authenticated
+	// mime type 'version' parameter, the 1 in "version=1"
+	ContentTypeVersion int
+
+	// if the content type version has been deprecated in favour of a newer version.
+	// only happens if a specific, deprecated, content type version has been requested.
+	ContentVersionDeprecated bool
+
+	// the request was successfully authenticated if an api key was given
 	Authenticated bool
-
-	Deprecated bool
 }
 
 // proxies a request from a http server to https://api.elifesciences.org
@@ -98,26 +92,54 @@ func ProxyHttpRequest(respWriter http.ResponseWriter, extReq *http.Request) {
 	io.Copy(respWriter, resp.Body)
 }
 
+/* extracts the content type ('mime') and it's version parameter from the given `content_type_mime`.
+ */
+func ParseContentType(content_type_mime string) (string, int, error) {
+	if content_type_mime == "" {
+		return "", 0, errors.New("empty mime")
+	} else {
+		content_type, parameter_map, error := mime.ParseMediaType(content_type_mime)
+		if error != nil {
+			return "", 0, error
+		}
+		parameter_version := parameter_map["version"]
+		if parameter_version == "" {
+			return "", 0, errors.New("version parameter not present")
+		}
+		content_type_version, error := strconv.Atoi(parameter_version)
+		if error != nil {
+			return "", 0, error
+		}
+		return content_type, content_type_version, nil
+	}
+}
+
 // makes a request to the api gateway for the given `endpoint` path,
-// returning an api.Response containing an instance of the given type `T`.
-func Request[T any](endpoint string, opts RequestConfig) Response[T] {
+// returning an `api.Response` that extends the built-in `http.Response`.
+func Request(endpoint string, opts RequestConfig) Response {
 	url := "https://api.elifesciences.org" + endpoint
 
-	resp, _ := http.Get(url)
-	defer resp.Body.Close()
+	resp, error := http.Get(url)
+	if error != nil {
+		log.Error("failed to fetch URL '", url, "' with error: ", error)
+	} else {
+		defer resp.Body.Close()
+	}
 
 	bytes, _ := io.ReadAll(resp.Body)
 
-	t_inst := utils.FromJSON[T](bytes)
+	response_content_type := resp.Header.Get("Content-Type")
+	content_type, content_type_version, error := ParseContentType(response_content_type)
+	if error != nil {
+		log.Warn("failed to correctly parse content type", response_content_type)
+	}
 
-	return Response[T]{
-		HttpResponse: *resp,
-		Content:      t_inst,
-		ContentType: ContentType{
-			ContentType: "foo",
-			Version:     1,
-			Deprecated:  false,
-		},
-		Authenticated: false,
+	return Response{
+		HttpResponse:             *resp,
+		Content:                  string(bytes),
+		ContentType:              content_type,
+		ContentTypeVersion:       content_type_version,
+		ContentVersionDeprecated: false,
+		Authenticated:            false,
 	}
 }
