@@ -4,53 +4,52 @@ import (
 	"strconv"
 
 	"github.com/lsh-0/ppp-go/internal/api"
-	"github.com/lsh-0/ppp-go/internal/types"
 )
 
-type API interface {
-	ArticleList(opts api.RequestConfig) api.Response[types.ArticleSnippetList]
-	Article(id int, opts api.RequestConfig) (api.Response[types.Article], error)
-	RelatedArticleList(id int, opts api.RequestConfig) api.Response[types.ArticleSnippetList]
-	ArticleVersionList(id int, opts api.RequestConfig) api.Response[types.ArticleSnippetList]
-	ArticleVersion(id int, version int, opts api.RequestConfig) api.Response[types.Article]
+type IAPI interface {
+	ArticleList(opts api.RequestConfig) api.Response
+	Article(id int64, opts api.RequestConfig) (api.Response, error)
+	RelatedArticleList(id int64, opts api.RequestConfig) api.Response
+	ArticleVersionList(id int64, opts api.RequestConfig) api.Response
+	ArticleVersion(id int64, version int, opts api.RequestConfig) api.Response
 }
 
 type Lax struct {
-	API
+	IAPI
 }
 
 type LaxProxy struct {
-	API
+	IAPI
 }
 
 // proxy results from a remote Lax 'article-list' endpoint
-func (p LaxProxy) ArticleList(opts api.RequestConfig) api.Response[types.ArticleSnippetList] {
-	return api.Request[types.ArticleSnippetList]("/articles", opts)
+func (p LaxProxy) ArticleList(opts api.RequestConfig) api.Response {
+	return api.Request("/articles", opts)
 }
 
-func (p LaxProxy) Article(id int, opts api.RequestConfig) (api.Response[types.Article], error) {
+func (p LaxProxy) Article(id int, opts api.RequestConfig) (api.Response, error) {
 	idstr := strconv.Itoa(id)
-	return api.Request[types.Article]("/articles/"+idstr, opts), nil
+	return api.Request("/articles/"+idstr, opts), nil
 }
 
-func (p LaxProxy) RelatedArticleList(id int, opts api.RequestConfig) api.Response[types.ArticleSnippetList] {
+func (p LaxProxy) RelatedArticleList(id int, opts api.RequestConfig) api.Response {
 	idstr := strconv.Itoa(id)
-	return api.Request[types.ArticleSnippetList]("/articles/"+idstr+"/related", opts)
+	return api.Request("/articles/"+idstr+"/related", opts)
 }
 
-func (p LaxProxy) ArticleVersionList(id int, opts api.RequestConfig) api.Response[types.ArticleSnippetList] {
+func (p LaxProxy) ArticleVersionList(id int, opts api.RequestConfig) api.Response {
 	idstr := strconv.Itoa(id)
-	return api.Request[types.ArticleSnippetList]("/articles/"+idstr+"/versions", opts)
+	return api.Request("/articles/"+idstr+"/versions", opts)
 }
 
-func (p LaxProxy) ArticleVersion(id int, version int, opts api.RequestConfig) api.Response[types.Article] {
+func (p LaxProxy) ArticleVersion(id int, version int, opts api.RequestConfig) api.Response {
 	idstr := strconv.Itoa(id)
 	versionstr := strconv.Itoa(version)
-	return api.Request[types.Article]("/articles/"+idstr+"/versions/"+versionstr, opts)
+	return api.Request("/articles/"+idstr+"/versions/"+versionstr, opts)
 }
 
 // a local implementation of Lax's 'article-list' endpoint
-func (p Lax) ArticleList(opts api.RequestConfig) api.Response[types.ArticleSnippetList] {
+func (p Lax) ArticleList(opts api.RequestConfig) api.Response {
 	/* TODO, obvs. */
-	return *new(api.Response[types.ArticleSnippetList])
+	return *new(api.Response)
 }
