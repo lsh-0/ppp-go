@@ -1,10 +1,13 @@
 package api
 
-// internal communication between components uses a common function interface of:
-//  `(endpoint, options)` or `(endpoint, param1, param2, paramN, options)`
-// returning a *http-like* response.
-// the http-like response uses a status code, a type instance of the body content if
-// content type was successfully negotiated, etc.
+// internal communication between components.
+
+// whether the component is proxying the request to a remote API,
+// or has a local implementation,
+// it will receive a list of zero or more parameters followed by an `api.RequestConfig` and
+// return an `api.Response`.
+
+// an `api.Response` extends the builtin `http.Response` with api specific parsing.
 
 import (
 	"errors"
@@ -46,8 +49,15 @@ type Response struct {
 	// https://pkg.go.dev/net/http#Response
 	HttpResponse http.Response
 
-	// response body as a string, probably JSON although not guaranteed
+	// the API may respond with an error
+	Error bool
+
+	// response body as a string, not bytes, regardless of content encoding.
+	// we don't expect to receive any binary content from the API
 	Content string
+
+	// response body as a JSON string, but only if JSON-type mime response
+	JSONContent string
 
 	// aka the 'mime' type, "application/vnd.elife.article-list+json"
 	ContentType string
@@ -103,8 +113,10 @@ func ParseContentType(content_type_mime string) (string, int, error) {
 			return "", 0, error
 		}
 		parameter_version := parameter_map["version"]
+		// it's ok for responses to exclude a version parameter.
+		// for example, 'application/problem+json' has no 'version' parameter.
 		if parameter_version == "" {
-			return "", 0, errors.New("version parameter not present")
+			return content_type, 0, nil
 		}
 		content_type_version, error := strconv.Atoi(parameter_version)
 		if error != nil {
@@ -119,6 +131,9 @@ func ParseContentType(content_type_mime string) (string, int, error) {
 func Request(endpoint string, opts RequestConfig) Response {
 	url := "https://api.elifesciences.org" + endpoint
 
+	// ensure url is valid?
+	// ensure `endpoint` starts with '/' ?
+
 	resp, error := http.Get(url)
 	if error != nil {
 		log.Error("failed to fetch URL '", url, "' with error: ", error)
@@ -126,7 +141,7 @@ func Request(endpoint string, opts RequestConfig) Response {
 		defer resp.Body.Close()
 	}
 
-	bytes, _ := io.ReadAll(resp.Body)
+	content_bytes, _ := io.ReadAll(resp.Body)
 
 	response_content_type := resp.Header.Get("Content-Type")
 	content_type, content_type_version, error := ParseContentType(response_content_type)
@@ -134,9 +149,13 @@ func Request(endpoint string, opts RequestConfig) Response {
 		log.Warn("failed to correctly parse content type", response_content_type)
 	}
 
+	in_error := content_type == "application/problem+json"
+
 	return Response{
 		HttpResponse:             *resp,
-		Content:                  string(bytes),
+		Error:                    in_error,
+		Content:                  string(content_bytes),
+		// JSONContent:           ...
 		ContentType:              content_type,
 		ContentTypeVersion:       content_type_version,
 		ContentVersionDeprecated: false,
